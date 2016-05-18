@@ -104,9 +104,9 @@ def initialize_training_folder(hypes):
 
     # TODO: read more about loggers and make file logging neater.
 
-    hypes_file = os.path.basename(tf.app.flags.FLAGS.hypes)
-    _copy_parameters_to_traindir(
-        hypes, hypes_file, "hypes.json", target_dir)
+    target_file = os.path.join(target_dir, 'hypes.json')
+    with open(target_file, 'w') as outfile:
+        json.dump(hypes, outfile, indent=2)
     _copy_parameters_to_traindir(
         hypes, hypes['model']['input_file'], "data_input.py", target_dir)
     _copy_parameters_to_traindir(
@@ -116,6 +116,71 @@ def initialize_training_folder(hypes):
         hypes, hypes['model']['objective_file'], "objective.py", target_dir)
     _copy_parameters_to_traindir(
         hypes, hypes['model']['optimizer_file'], "solver.py", target_dir)
+
+
+def build_training_graph(hypes, modules):
+    """Run one evaluation against the full epoch of data.
+
+    Parameters
+    ----------
+    hypes : dict
+        Hyperparameters
+    modules : tuble
+        the modules load in utils
+    train : bool
+        Whether to include training ops. Set false to build
+        graph for inference only
+
+    return:
+        graph_ops
+    """
+    data_input, arch, objective, solver = modules
+
+    global_step = tf.Variable(0.0, trainable=False)
+
+    q, logits, decoder, = {}, {}, {}
+    image_batch, label_batch = {}, {}
+    eval_lists = {}
+
+    # Add Input Producers to the Graph
+    with tf.name_scope('Input'):
+        q['train'] = data_input.create_queues(hypes, 'train')
+        input_batch = data_input.inputs(hypes, q['train'], 'train',
+                                        hypes['dirs']['data_dir'])
+        image_batch['train'], label_batch['train'] = input_batch
+
+    logits['train'] = arch.inference(hypes, image_batch['train'], 'train')
+
+    decoder['train'] = objective.decoder(hypes, logits['train'])
+
+    # Add to the Graph the Ops for loss calculation.
+    loss = objective.loss(hypes, decoder['train'], label_batch['train'])
+
+    # Add to the Graph the Ops that calculate and apply gradients.
+    train_op = solver.training(hypes, loss, global_step=global_step)
+
+    # Add the Op to compare the logits to the labels during evaluation.
+    eval_lists['train'] = objective.evaluation(hypes, decoder['train'],
+                                               label_batch['train'])
+
+    # Validation Cycle to the Graph
+    with tf.name_scope('Validation'):
+        with tf.name_scope('Input'):
+            q['val'] = data_input.create_queues(hypes, 'val')
+            input_batch = data_input.inputs(hypes, q['val'], 'val',
+                                            hypes['dirs']['data_dir'])
+            image_batch['val'], label_batch['val'] = input_batch
+
+            tf.get_variable_scope().reuse_variables()
+
+        logits['val'] = arch.inference(hypes, image_batch['val'], 'val')
+
+        decoder['val'] = objective.decoder(hypes, logits['val'])
+
+        eval_lists['val'] = objective.evaluation(hypes, decoder['val'],
+                                                 label_batch['val'])
+
+    return q, train_op, loss, eval_lists
 
 
 def maybe_download_and_extract(hypes):
@@ -257,7 +322,7 @@ def do_training(hypes):
     with tf.Graph().as_default():
 
         # build the graph based on the loaded modules
-        graph_ops = core.build_graph(hypes, modules)
+        graph_ops = build_training_graph(hypes, modules)
         q = graph_ops[0]
 
         # prepaire the tv session

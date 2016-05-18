@@ -4,6 +4,7 @@ from __future__ import division
 from __future__ import print_function
 
 import imp
+import json
 import logging
 import numpy as np
 import os
@@ -106,7 +107,7 @@ def load_modules_from_hypes(hypes):
 
     Returns
     -------
-    data_input, arch, objective, solver
+    hypes, data_input, arch, objective, solver
     """
     base_path = hypes['dirs']['base_path']
     f = os.path.join(base_path, hypes['model']['input_file'])
@@ -119,6 +120,59 @@ def load_modules_from_hypes(hypes):
     solver = imp.load_source("solver", f)
 
     return data_input, arch, objective, solver
+
+
+def load_modules_from_logdir(logdir):
+    """Load hypes from the logdir.
+
+    Namely the modules loaded are:
+    input_file, architecture_file, objective_file, optimizer_file
+
+    Parameters
+    ----------
+    logdir : string
+        Path to logdir
+
+    Returns
+    -------
+    data_input, arch, objective, solver
+    """
+    model_dir = os.path.join(logdir, "model_files")
+    f = os.path.join(model_dir, "data_input.py")
+    # TODO: create warning if file f does not exists
+    data_input = imp.load_source("input", f)
+    f = os.path.join(model_dir, "architecture.py")
+    arch = imp.load_source("arch", f)
+    f = os.path.join(model_dir, "objective.py")
+    objective = imp.load_source("objective", f)
+    f = os.path.join(model_dir, "solver.py")
+    solver = imp.load_source("solver", f)
+
+    return data_input, arch, objective, solver
+
+
+def load_hypes_from_logdir(logdir):
+    """Load hypes from the logdir.
+
+    Namely the modules loaded are:
+    input_file, architecture_file, objective_file, optimizer_file
+
+    Parameters
+    ----------
+    logdir : string
+        Path to logdir
+
+    Returns
+    -------
+    hypes
+    """
+    hypes_fname = os.path.join(logdir, "model_files/hypes.json")
+    with open(hypes_fname, 'r') as f:
+        logging.info("f: %s", f)
+        hypes = json.load(f)
+    hypes['dirs']['base_path'] = logdir
+
+    return hypes
 
 
 # Add basic configuration
