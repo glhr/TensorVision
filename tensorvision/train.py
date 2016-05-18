@@ -34,6 +34,7 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
 import tensorvision.utils as utils
+import tensorvision.core as core
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -155,67 +156,7 @@ def _write_precision_to_summary(precision, summary_writer, name, global_step,
     summary_writer.add_summary(summary, global_step)
 
 
-def build_training_graph(hypes, modules):
-    """Run one evaluation against the full epoch of data.
-
-    Parameters
-    ----------
-    hypes : dict
-        Hyperparameters
-    modules : tuble
         The modules load in utils
-
-    return:
-        graph_ops
-    """
-    data_input, arch, objective, solver = modules
-
-    global_step = tf.Variable(0.0, trainable=False)
-
-    q, logits, decoder, = {}, {}, {}
-    image_batch, label_batch = {}, {}
-    eval_dict = {}
-
-    # Add Input Producers to the Graph
-    with tf.name_scope('Input'):
-        q['train'] = data_input.create_queues(hypes, 'train')
-        input_batch = data_input.inputs(hypes, q['train'], 'train',
-                                        hypes['dirs']['data_dir'])
-        image_batch['train'], label_batch['train'] = input_batch
-
-    logits['train'] = arch.inference(hypes, image_batch['train'], 'train')
-
-    decoder['train'] = objective.decoder(hypes, logits['train'])
-
-    # Add to the Graph the Ops for loss calculation.
-    loss = objective.loss(hypes, decoder['train'], label_batch['train'])
-
-    # Add to the Graph the Ops that calculate and apply gradients.
-    train_op = solver.training(hypes, loss, global_step=global_step)
-
-    # Add the Op to compare the logits to the labels during evaluation.
-    eval_dict['train'] = objective.evaluation(hypes, decoder['train'],
-                                              label_batch['train'])
-
-    # Validation Cycle to the Graph
-    with tf.name_scope('Validation'):
-        q['val'] = data_input.create_queues(hypes, 'val')
-        input_batch = data_input.inputs(hypes, q['val'], 'val',
-                                        hypes['dirs']['data_dir'])
-        image_batch['val'], label_batch['val'] = input_batch
-
-        tf.get_variable_scope().reuse_variables()
-
-        logits['val'] = arch.inference(hypes, image_batch['val'], 'val')
-
-        decoder['val'] = objective.decoder(hypes, logits['val'])
-
-        eval_dict['val'] = objective.evaluation(hypes, decoder['val'],
-                                                label_batch['val'])
-
-    return q, train_op, loss, eval_dict
-
-
 def _print_training_status(hypes, step, loss_value, start_time, sess_coll):
     duration = (time.time() - start_time) / int(utils.cfg.step_show)
     examples_per_sec = hypes['solver']['batch_size'] / duration
@@ -245,14 +186,14 @@ def _do_evaluation(hypes, step, sess_coll, eval_dict):
     sess, saver, summary_op, summary_writer, coord, threads = sess_coll
     logging.info('Doing Evaluate with Training Data.')
 
-    precision = utils.do_eval(hypes, eval_dict, phase='train',
-                              sess=sess)
+    precision = core.do_eval(hypes, eval_dict, phase='train',
+                             sess=sess)
     _write_precision_to_summary(precision, summary_writer,
                                 "Train", step, sess)
 
     logging.info('Doing Evaluation with Testing Data.')
-    precision = utils.do_eval(hypes, eval_dict, phase='val',
-                              sess=sess)
+    precision = core.do_eval(hypes, eval_dict, phase='val',
+                             sess=sess)
     _write_precision_to_summary(precision, summary_writer,
                                 'val', step, sess)
 
@@ -316,11 +257,11 @@ def do_training(hypes):
     with tf.Graph().as_default():
 
         # build the graph based on the loaded modules
-        graph_ops = build_training_graph(hypes, modules)
+        graph_ops = core.build_graph(hypes, modules)
         q = graph_ops[0]
 
         # prepaire the tv session
-        sess_coll = utils.start_tv_session(hypes)
+        sess_coll = core.start_tv_session(hypes)
         sess, saver, summary_op, summary_writer, coord, threads = sess_coll
 
         # Start the data load
