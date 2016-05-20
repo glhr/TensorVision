@@ -198,16 +198,17 @@ def maybe_download_and_extract(hypes):
         data_input.maybe_download_and_extract(hypes, hypes['dirs']['data_dir'])
 
 
-def _write_precision_to_summary(precision, summary_writer, name, global_step,
-                                sess):
+def _write_evaluation_to_summary(evaluation_results, summary_writer, phase,
+                                 global_step, sess):
     """
-    Write the precision to the summary file.
+    Write the evaluation_results to the summary file.
 
     Parameters
     ----------
-    precision : tensor
+    evaluation_results : tuple
+        The output of do_eval
     summary_writer : tf.train.SummaryWriter
-    name : string
+    phase : string
         Name of Operation to write
     global_step : tensor or int
         Xurrent training step
@@ -215,13 +216,13 @@ def _write_precision_to_summary(precision, summary_writer, name, global_step,
     """
     # write result to summary
     summary = tf.Summary()
-    # summary.ParseFromString(sess.run(summary_op))
-    summary.value.add(tag='Evaluation/' + name + ' Precision',
-                      simple_value=precision)
+    eval_names, avg_results = evaluation_results
+    for name, result in zip(eval_names, avg_results):
+        summary.value.add(tag='Evaluation/' + phase + '/' + name,
+                          simple_value=result)
     summary_writer.add_summary(summary, global_step)
 
 
-        The modules load in utils
 def _print_training_status(hypes, step, loss_value, start_time, sess_coll):
     duration = (time.time() - start_time) / int(utils.cfg.step_show)
     examples_per_sec = hypes['solver']['batch_size'] / duration
@@ -251,16 +252,16 @@ def _do_evaluation(hypes, step, sess_coll, eval_dict):
     sess, saver, summary_op, summary_writer, coord, threads = sess_coll
     logging.info('Doing Evaluate with Training Data.')
 
-    precision = core.do_eval(hypes, eval_dict, phase='train',
-                             sess=sess)
-    _write_precision_to_summary(precision, summary_writer,
-                                "Train", step, sess)
+    eval_results = core.do_eval(hypes, eval_dict, phase='train',
+                                sess=sess)
+    _write_evaluation_to_summary(eval_results, summary_writer,
+                                 "Train", step, sess)
 
     logging.info('Doing Evaluation with Testing Data.')
-    precision = core.do_eval(hypes, eval_dict, phase='val',
-                             sess=sess)
-    _write_precision_to_summary(precision, summary_writer,
-                                'val', step, sess)
+    eval_results = core.do_eval(hypes, eval_dict, phase='val',
+                                sess=sess)
+    _write_evaluation_to_summary(eval_results, summary_writer,
+                                 'val', step, sess)
 
 
 def run_training_step(hypes, step, start_time, graph_ops, sess_coll):

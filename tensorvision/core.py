@@ -146,8 +146,8 @@ def do_eval(hypes, eval_list, phase, sess):
 
     Returns
     -------
-    float
-        The precision
+    tuple of lists:
+        List of names and evaluation results
     """
     # And run one epoch of eval.
     # Checking for List for compability
@@ -182,4 +182,4 @@ def do_eval(hypes, eval_list, phase, sess):
     for name, value in zip(eval_names, avg_results):
         logging.info('%s : % 0.04f ' % (name, value))
 
-    return avg_results[0]  # TODO
+    return eval_names, avg_results

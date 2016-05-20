@@ -83,9 +83,7 @@ def do_analyze(logdir):
         data_input.start_enqueuing_threads(hypes, q['val'], 'val', sess,
                                            hypes['dirs']['data_dir'])
 
-        core.do_eval(hypes, eval_lists, 'val', sess)
-
-    return
+    return core.do_eval(hypes, eval_lists, 'val', sess)
 
 
 def main(_):
