@@ -59,10 +59,10 @@ def do_analyze(logdir):
     This will load model files and weights found in logdir and run a basic
     analysis.
 
-    Paramters
-    ---------
+    Parameters
+    ----------
     logdir : string
-        folder with logs
+        Directory with logs.
     """
     hypes = utils.load_hypes_from_logdir(logdir)
     modules = utils.load_modules_from_logdir(logdir)
