@@ -158,6 +158,7 @@ Before commiting any change, you should run
 .. code:: bash
 
     tv-train --hypes examples/cifar10_minimal.json
+    tv-analyze --hypes examples/cifar10_minimal.json --logdir examples/RUNS/debug/
 
 to see if everything still works as expected.
 
