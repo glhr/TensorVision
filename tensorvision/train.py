@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 """Trains, evaluates and saves the model network using a queue."""
-# pylint: disable=missing-docstring
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -59,7 +58,8 @@ def _copy_parameters_to_traindir(hypes, input_file, target_name, target_dir):
 
 
 def _start_enqueuing_threads(hypes, q, sess, data_input):
-    """Start the enqueuing threads of the data_input module.
+    """
+    Start the enqueuing threads of the data_input module.
 
     Parameters
     ----------
@@ -119,20 +119,27 @@ def initialize_training_folder(hypes):
 
 
 def build_training_graph(hypes, modules):
-    """Run one evaluation against the full epoch of data.
+    """
+    Run one evaluation against the full epoch of data.
 
     Parameters
     ----------
     hypes : dict
         Hyperparameters
-    modules : tuble
-        the modules load in utils
+    modules : tuple
+        The modules load in utils.
     train : bool
         Whether to include training ops. Set false to build
         graph for inference only
 
-    return:
-        graph_ops
+    Returns
+    -------
+    tuple
+        (q, train_op, loss, eval_lists) where
+        q is a dict with keys 'train' and 'val' which includes queues,
+        train_op is a TODO,
+        loss is a float,
+        eval_lists is a dict with keys 'train' and 'val'
     """
     data_input, arch, objective, solver = modules
 
@@ -372,10 +379,10 @@ def main(_):
     utils.load_plugins()
     utils.set_dirs(hypes, tf.app.flags.FLAGS.hypes)
 
-    logging.info("Initialize Training Folder")
+    logging.info("Initialize training folder")
     initialize_training_folder(hypes)
     maybe_download_and_extract(hypes)
-    logging.info("Start Training")
+    logging.info("Start training")
     do_training(hypes)
 
 

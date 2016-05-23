@@ -1,16 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Trains, evaluates and saves the model network using a queue."""
-# pylint: disable=missing-docstring
+"""Evaluates the model."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import imp
-import json
 import logging
-import numpy as np
 import os.path
 import sys
 
@@ -24,13 +20,8 @@ else:
                         level=logging.INFO,
                         stream=sys.stdout)
 
-
-import time
-
-from shutil import copyfile
-
-from six.moves import xrange  # pylint: disable=redefined-builtin
-
+# https://github.com/tensorflow/tensorflow/issues/2034#issuecomment-220820070
+import numpy as np
 import tensorflow as tf
 
 import tensorvision.utils as utils
@@ -44,6 +35,17 @@ flags.DEFINE_string('logdir', None,
 
 
 def _load_weights(checkpoint_dir, sess, saver):
+    """
+    Load the weights of a model stored in saver.
+
+    Parameters
+    ----------
+    checkpoint_dir : str
+        The directory of checkpoints.
+    sess :
+        A Session to use to restore the parameters.
+    saver : tf.train.Saver
+    """
     ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
     if ckpt and ckpt.model_checkpoint_path:
         logging.info(ckpt.model_checkpoint_path)
@@ -109,7 +111,7 @@ def main(_):
 
     utils.load_plugins()
 
-    logging.info("Starting to analyze Model in: %s", FLAGS.logdir)
+    logging.info("Starting to analyze model in '%s'", FLAGS.logdir)
     do_analyze(FLAGS.logdir)
 
 

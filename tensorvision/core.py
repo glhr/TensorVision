@@ -2,21 +2,14 @@
 # -*- coding: utf-8 -*-
 
 """Core functions of TV."""
-# pylint: disable=missing-docstring
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import imp
-import json
 import logging
+
 import numpy as np
-import os.path
-import sys
-
 import tensorflow as tf
-
-import tensorvision.utils as utils
 
 
 def build_graph(hypes, modules, train=True):
@@ -26,14 +19,20 @@ def build_graph(hypes, modules, train=True):
     ----------
     hypes : dict
         Hyperparameters
-    modules : tuble
-        the modules load in utils
+    modules : tuple
+        The modules load in utils.
     train : bool
-        Whether to include training ops. Set false to build
-        graph for inference only
+        Whether to include training ops.
+        Set False to build graph for inference only.
 
-    return:
-        graph_ops
+    Returns
+    -------
+    tuple
+        (q, train_op, loss, eval_lists) where
+        q is a dict with keys 'train' and 'val' which includes queues,
+        train_op is a TODO,
+        loss is a float,
+        eval_lists is a dict with keys 'train' and 'val'
     """
     data_input, arch, objective, solver = modules
 
@@ -101,8 +100,10 @@ def start_tv_session(hypes):
     hypes : dict
         Hyperparameters
 
-    return:
-        sess, saver, summary_op, summary_writer, threads
+    Returns
+    -------
+    tuple
+        (sess, saver, summary_op, summary_writer, threads)
     """
     # Build the summary operation based on the TF collection of Summaries.
     summary_op = tf.merge_all_summaries()
@@ -136,17 +137,17 @@ def do_eval(hypes, eval_list, phase, sess):
     ----------
     hypes : dict
         Hyperparameters
-    eval_list : list of tubles
-        Each tuble should contain a string (name if the metric) and a
-        tensor (storing the result of the metric)
+    eval_list : list of tuples
+        Each tuple should contain a string (name if the metric) and a
+        tensor (storing the result of the metric).
     phase : str
-        Describes the data the evaluation is run on
+        Describes the data the evaluation is run on.
     sess : tf.Session
         The session in which the model has been trained.
 
     Returns
     -------
-    tuple of lists:
+    tuple of lists
         List of names and evaluation results
     """
     # And run one epoch of eval.
@@ -155,8 +156,8 @@ def do_eval(hypes, eval_list, phase, sess):
         eval_names, eval_op = zip(*eval_list[phase])
 
     else:
-        logging.warning("Passing eval_op directly is deprecated."
-                        "Pass a list of tubles instead.")
+        logging.warning("Passing eval_op directly is deprecated. "
+                        "Pass a list of tuples instead.")
         eval_names = ['Accuracy']
         eval_op = [eval_list[phase]]
 

@@ -12,6 +12,8 @@ import time
 
 from datetime import datetime
 
+# https://github.com/tensorflow/tensorflow/issues/2034#issuecomment-220820070
+import numpy as np
 import tensorflow as tf
 
 # Basic model parameters as external flags.
