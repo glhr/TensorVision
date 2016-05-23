@@ -93,7 +93,8 @@ def build_graph(hypes, modules, train=True):
 
 
 def start_tv_session(hypes):
-    """Run one evaluation against the full epoch of data.
+    """
+    Run one evaluation against the full epoch of data.
 
     Parameters
     ----------

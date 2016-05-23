@@ -42,7 +42,7 @@ def _load_weights(checkpoint_dir, sess, saver):
     ----------
     checkpoint_dir : str
         The directory of checkpoints.
-    sess :
+    sess : tf.Session
         A Session to use to restore the parameters.
     saver : tf.train.Saver
     """
