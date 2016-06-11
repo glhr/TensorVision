@@ -119,6 +119,49 @@ def build_graph(hypes, modules, train=True):
     return q, train_op, loss, eval_lists
 
 
+def _add_softmax(hypes, logits):
+    with tf.name_scope('decoder'):
+        logits = tf.reshape(logits, (-1, 2))
+        epsilon = tf.constant(value=hypes['solver']['epsilon'])
+        logits = logits + epsilon
+
+        softmax = tf.nn.softmax(logits)
+
+    return softmax
+
+
+def _create_input_placeholder():
+    image_pl = tf.placeholder(tf.float32)
+    label_pl = tf.placeholder(tf.float32)
+    return image_pl, label_pl
+
+
+def build_inference_graph(hypes, modules, image, label):
+    """Run one evaluation against the full epoch of data.
+
+    Parameters
+    ----------
+    hypes : dict
+        Hyperparameters
+    modules : tuble
+        the modules load in utils
+    image : placeholder
+    label : placeholder
+
+    return:
+        graph_ops
+    """
+    data_input, arch, objective, solver = modules
+
+    logits = arch.inference(hypes, image, train=False)
+
+    decoder = objective.decoder(hypes, logits)
+
+    softmax_layer = _add_softmax(hypes, decoder)
+
+    return softmax_layer
+
+
 def start_tv_session(hypes):
     """
     Run one evaluation against the full epoch of data.

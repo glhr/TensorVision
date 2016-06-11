@@ -263,7 +263,51 @@ def _do_evaluation(hypes, step, sess_coll, eval_dict):
                                  'val', step, sess)
 
 
-def run_training_step(hypes, step, start_time, graph_ops, sess_coll):
+def _print_eval_dict(eval_dict):
+    logging.info('Results of Evaluation.')
+    for name, value in eval_dict:
+            logging.info('%s : % 0.04f ' % (name, value))
+    return
+
+
+def _write_eval_dict_to_summary(eval_dict, summary_writer, global_step):
+    summary = tf.Summary()
+    for name, result in eval_dict:
+        summary.value.add(tag='Evaluation/' + 'python' + '/' + name,
+                          simple_value=result)
+    summary_writer.add_summary(summary, global_step)
+    return
+
+
+def _write_images_to_summary(images, summary_writer, step):
+    for name, image in images:
+        image = image.astype('float32')
+        shape = image.shape
+        image = image.reshape(1, shape[0], shape[1], shape[2])
+        with tf.Graph().as_default():
+            with tf.device('/cpu:0'):
+                log_image = tf.image_summary(name, image)
+            with tf.Session() as sess:
+                summary_str = sess.run([log_image])
+                summary_writer.add_summary(summary_str[0], step)
+    return
+
+
+def _do_python_evaluation(hypes, step, sess_coll, objective,
+                          image_pl, softmax):
+    logging.info('Doing Python Evaluation.')
+    sess, saver, summary_op, summary_writer, coord, threads = sess_coll
+    eval_dict, images = objective.tensor_eval(hypes, sess, image_pl, softmax)
+
+    _print_eval_dict(eval_dict)
+    _write_eval_dict_to_summary(eval_dict, summary_writer, step)
+    _write_images_to_summary(images, summary_writer, step)
+
+    return
+
+
+def run_training_step(hypes, step, start_time, graph_ops, sess_coll,
+                      objective, image_pl, softmax):
     """Run one iteration of training."""
     # Unpack operations for later use
     sess = sess_coll[0]
@@ -284,6 +328,8 @@ def run_training_step(hypes, step, start_time, graph_ops, sess_coll):
        (step + 1) == hypes['solver']['max_steps']:
         # write checkpoint to disk
         _do_evaluation(hypes, step, sess_coll, eval_dict)
+        _do_python_evaluation(hypes, step, sess_coll, objective,
+                              image_pl, softmax)
         # Reset timer
         start_time = time.time()
 
@@ -296,6 +342,12 @@ def run_training_step(hypes, step, start_time, graph_ops, sess_coll):
         start_time = time.time()
 
     return start_time
+
+
+def _create_input_placeholder():
+    image_pl = tf.placeholder(tf.float32)
+    label_pl = tf.placeholder(tf.float32)
+    return image_pl, label_pl
 
 
 def do_training(hypes):
@@ -329,6 +381,13 @@ def do_training(hypes):
         sess_coll = core.start_tv_session(hypes)
         sess, saver, summary_op, summary_writer, coord, threads = sess_coll
 
+        with tf.name_scope('Validation'):
+            image_pl, label_pl = _create_input_placeholder()
+            image = tf.expand_dims(image_pl, 0)
+            softmax = core.build_inference_graph(hypes, modules,
+                                                 image=image,
+                                                 label=label_pl)
+
         # Start the data load
         _start_enqueuing_threads(hypes, q, sess, data_input)
 
@@ -336,7 +395,8 @@ def do_training(hypes):
         start_time = time.time()
         for step in xrange(hypes['solver']['max_steps']):
             start_time = run_training_step(hypes, step, start_time,
-                                           graph_ops, sess_coll)
+                                           graph_ops, sess_coll, objective,
+                                           image_pl, softmax)
 
         # stopping input Threads
         coord.request_stop()
