@@ -43,6 +43,8 @@ import tensorvision.core as core
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
+import wandb
+
 
 def _copy_parameters_to_traindir(hypes, input_file, target_name, target_dir):
     """
@@ -213,6 +215,8 @@ def run_training(hypes, modules, tv_graph, tv_sess, start_step=0):
     sess = tv_sess['sess']
     summary_writer = tv_sess['writer']
 
+    wandb.init(project="KittiSeg", config=FLAGS, sync_tensorboard=True)
+
     solver = modules['solver']
 
     display_iter = hypes['logging']['display_iter']
@@ -257,6 +261,8 @@ def run_training(hypes, modules, tv_graph, tv_sess, start_step=0):
 
             # Reset timer
             start_time = time.time()
+
+        wandb.tensorflow.log(tf.summary.merge_all())
 
         if step % write_iter == 0:
             # write values to summary
