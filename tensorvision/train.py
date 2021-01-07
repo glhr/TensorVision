@@ -228,6 +228,8 @@ def run_training(hypes, modules, tv_graph, tv_sess, start_step=0):
     py_smoother = MedianSmoother(20)
     dict_smoother = ExpoSmoother(0.95)
 
+    wandb.log({"hypes":hypes})
+
     n = 0
 
     eval_names, eval_ops = zip(*tv_graph['eval_list'])
@@ -238,7 +240,7 @@ def run_training(hypes, modules, tv_graph, tv_sess, start_step=0):
         lr = solver.get_learning_rate(hypes, step)
         feed_dict = {tv_graph['learning_rate']: lr}
 
-        wandb.log({"lr":lr})
+        # wandb.log({"lr":lr})
 
         if step % display_iter:
             sess.run([tv_graph['train_op']], feed_dict=feed_dict)
@@ -261,6 +263,10 @@ def run_training(hypes, modules, tv_graph, tv_sess, start_step=0):
 
             _print_eval_dict(eval_names, smoothed_results, prefix='(smooth)')
 
+            for k,v in zip(eval_names, eval_results):
+                wandb.log({k+"(raw)":v, "step":step})
+            for k,v in zip(eval_names, smoothed_results):
+                wandb.log({k+"(smooth)":v, "step":step})
             # Reset timer
             start_time = time.time()
 
@@ -305,7 +311,7 @@ def run_training(hypes, modules, tv_graph, tv_sess, start_step=0):
                 name = str(n % 10) + '_' + images[0][0]
                 image_file = os.path.join(hypes['dirs']['image_dir'], name)
                 scp.misc.imsave(image_file, images[0][1])
-                wandb.log({"img":[wandb.Image(images[0][1])],"step":step})
+                wandb.log({"img_"+step:[wandb.Image(images[0][1])],"step":step})
                 n = n + 1
 
             logging.info('Raw Results:')
@@ -313,8 +319,8 @@ def run_training(hypes, modules, tv_graph, tv_sess, start_step=0):
             _write_eval_dict_to_summary(eval_dict, 'Evaluation/raw',
                                         summary_writer, step)
 
-            for k,v in eval_dict:
-                wandb.log({k+"(raw)":v, "step":step})
+            # for k,v in eval_dict:
+            #     wandb.log({k+"(raw)":v, "step":step})
 
             logging.info('Smooth Results:')
             names, res = zip(*eval_dict)
@@ -324,8 +330,8 @@ def run_training(hypes, modules, tv_graph, tv_sess, start_step=0):
             _write_eval_dict_to_summary(eval_dict, 'Evaluation/smoothed',
                                         summary_writer, step)
 
-            for k,v in eval_dict:
-                wandb.log({k+"(smooth)":v, "step":step})
+            # for k,v in eval_dict:
+            #     wandb.log({k+"(smooth)":v, "step":step})
 
             # Reset timer
             start_time = time.time()
