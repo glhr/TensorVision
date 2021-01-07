@@ -238,10 +238,10 @@ def run_training(hypes, modules, tv_graph, tv_sess, start_step=0):
         lr = solver.get_learning_rate(hypes, step)
         feed_dict = {tv_graph['learning_rate']: lr}
 
+        wandb.log({"lr":lr})
+
         if step % display_iter:
             sess.run([tv_graph['train_op']], feed_dict=feed_dict)
-
-        wandb.log(feed_dict)
 
         # Write the summaries and print an overview fairly often.
         elif step % display_iter == 0:
@@ -287,8 +287,6 @@ def run_training(hypes, modules, tv_graph, tv_sess, start_step=0):
             _write_eval_dict_to_summary(eval_dict, 'Eval/smooth',
                                         summary_writer, step)
 
-            wandb.log(eval_dict)
-
         # Do a evaluation and print the current state
         if (step) % eval_iter == 0 and step > 0 or \
            (step + 1) == hypes['solver']['max_steps']:
@@ -307,12 +305,16 @@ def run_training(hypes, modules, tv_graph, tv_sess, start_step=0):
                 name = str(n % 10) + '_' + images[0][0]
                 image_file = os.path.join(hypes['dirs']['image_dir'], name)
                 scp.misc.imsave(image_file, images[0][1])
+                wandb.log({"img":[wandb.Image(images[0][1])],"step":step})
                 n = n + 1
 
             logging.info('Raw Results:')
             utils.print_eval_dict(eval_dict, prefix='(raw)   ')
             _write_eval_dict_to_summary(eval_dict, 'Evaluation/raw',
                                         summary_writer, step)
+
+            for k,v in eval_dict:
+                wandb.log({k+"(raw)":v, "step":step})
 
             logging.info('Smooth Results:')
             names, res = zip(*eval_dict)
@@ -321,6 +323,9 @@ def run_training(hypes, modules, tv_graph, tv_sess, start_step=0):
             utils.print_eval_dict(eval_dict, prefix='(smooth)')
             _write_eval_dict_to_summary(eval_dict, 'Evaluation/smoothed',
                                         summary_writer, step)
+
+            for k,v in eval_dict:
+                wandb.log({k+"(smooth)":v, "step":step})
 
             # Reset timer
             start_time = time.time()
